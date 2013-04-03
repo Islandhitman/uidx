@@ -1,6 +1,7 @@
 import string
 import ssl
 import nntplib
+import os
 
 
 class Server(object):
@@ -39,46 +40,23 @@ class Server(object):
         resp, count, first, last, name = self._server.group(group)
         return first, last, count
 
-    def fetch_articles(self, group, start_index=None, chunk_size=None):
+    def fetch_articles(self, group, lower_limit=None, upper_limit=None):
         print('Reading from group {0}...'.format(group))
-        count, first, last = self._server.group(group)
-        print('Getting a list of nzb files in {0} ({1} articles found)...'.format(group, count))
+        self._server.group(group)
 
-        max_run_size = max_run_size if max_run_size else 200000
-        chunk_size = chunk_size if chunk_size else 20000
-        start_index = start_index if start_index else int(first)
-        last_index = int(last)
+        print('Reading records {0}:{1}.'.format(lower_limit, upper_limit))
 
-        if start_index < int(first) and not force_start_index:
-            start_index = int(first)
+        try:
+            resp, items = self._server.over((str(lower_limit), str(upper_limit)))
+        except:
+            print('Server failed to respond, reconnecting...')
+            self.connect()
+            self._server.group(group)
+            resp, items = self._server.over(str(lower_limit), str(upper_limit))
 
-        current_index = start_index
-
-        if (last_index - current_index) > max_run_size and not force_start_index:
-            current_index = last_index - max_run_size
-
-        if force_start_index:
-            last_index = start_index + max_run_size
-
-        while (current_index < last_index):
-            if (current_index + chunk_size >= last_index):
-                chunk_size = last_index - current_index
-
-            print('Reading records {0}:{1}.'.format(current_index, current_index + chunk_size))
-
-            try:
-                resp, items = self._server.over(str(current_index), str(current_index + chunk_size))
-            except:
-                print('Server failed to respond, reconnecting...')
-                self.connect()
-                self._server.group(group)
-                resp, items = self._server.over((current_index, current_index + chunk_size))
-
-            for artnum, info in items:
-                if '.nzb' in info['subject'].lower():
-                    print(('found nzb: {0}'.format(artnum), info))
-
-            current_index += chunk_size
+        for artnum, info in items:
+            if '.nzb' in info['subject'].lower():
+                print(('found nzb: {0}'.format(artnum), info))
 
     def quit(self):
         self._server.quit()
