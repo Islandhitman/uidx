@@ -52,7 +52,7 @@ class Server(object):
             print('Server failed to respond, reconnecting...')
             self.connect()
             self._server.group(group)
-            resp, items = self._server.over(str(lower_limit), str(upper_limit))
+            resp, items = self._server.over((str(lower_limit), str(upper_limit)))
 
         for artnum, info in items:
             if '.nzb' in info['subject'].lower():
