@@ -4,10 +4,10 @@ import nntplib
 
 
 class Server(object):
-    def __init__(self, host, user, password, use_ssl=False, port=None):
+    def __init__(self, host, user, passwd, port=None, use_ssl=False):
         self._host = host
         self._user = user
-        self._pass = password
+        self._passwd = passwd
         self._use_ssl = use_ssl
 
         if self._use_ssl:
@@ -16,28 +16,32 @@ class Server(object):
         else:
             self._port = port if port else 119
 
-        self._connect()
+        self.connect()
 
 
-    def _connect(self):
+    def connect(self):
         if self._use_ssl:
             self._server = nntplib.NNTP_SSL(
                 host=self._host,
                 port=self._port,
                 user=self._user,
-                password=self._pass,
+                password=self._passwd,
                 ssl_context=self._ssl_context)
         else:
             self._server = nntplib.NNTP(
                 host=self._host,
                 port=self._port,
                 user=self._user,
-                password=self._pass)
+                password=self._passwd)
         print('Connected to {0}.'.format(self._host))
 
-    def fetch_articles(self, group, start_index=None, chunk_size=None, max_run_size=None, force_start_index=False):
-        print('Reading from group {0}...'.format(group))
+    def set_group(self, group):
         resp, count, first, last, name = self._server.group(group)
+        return first, last, count
+
+    def fetch_articles(self, group, start_index=None, chunk_size=None):
+        print('Reading from group {0}...'.format(group))
+        count, first, last = self._server.group(group)
         print('Getting a list of nzb files in {0} ({1} articles found)...'.format(group, count))
 
         max_run_size = max_run_size if max_run_size else 200000
@@ -66,7 +70,7 @@ class Server(object):
                 resp, items = self._server.over(str(current_index), str(current_index + chunk_size))
             except:
                 print('Server failed to respond, reconnecting...')
-                self._connect()
+                self.connect()
                 self._server.group(group)
                 resp, items = self._server.over((current_index, current_index + chunk_size))
 

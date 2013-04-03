@@ -27,8 +27,8 @@ def worker(host, user, passwd, port, use_ssl, group, start_index, chunk_size, re
     while not article_queue.empty():
         try:
             # increment start_index here so no two processes end up pulling the same data
-            start_index.value = start_index + chunk_size
-            results.append(s.fetch_articles(group, start_index - chunk_size, chunk_size))
+            start_index.value = (start_index + chunk_size + 1)
+            results.append(s.fetch_articles(group, (start_index - chunk_size - 1), chunk_size))
         except Queue.Empty:
             pass
 
@@ -43,7 +43,7 @@ def main():
     for group in GROUPS:
         workers = []
         # get group info here.
-        first, last, count = main_server_instance.get_group_info(group, DAYS)
+        first, last, count = main_server_instance.set_group(group, DAYS)
 
         start_index = multiprocessing.Value('i', first)
         last_index = last
